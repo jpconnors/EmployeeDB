@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Sun Dec  2 12:15:24 2018
+
+@author: JP
+"""
+
+import json
+import urllib
+import sqlite3
+import os
+
+
+class Inventory:
+    def __init__(self):
+        # Connect to Database
+        conn, curr = self.connect('New_EmployeeDB.sqlite')
+        self.conn = conn 
+        self.curr = curr
+        self.create_table()
+    def create_table(self):
+        """
+        Creates Table if Table does not exist
+        """
+        #curr.execute ('DROP TABLE ISBNS')
+        self.curr.execute('''CREATE TABLE IF NOT EXISTS Employees
+            (ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            First_Name TEXT,
+            Last_Name TEXT,
+            EMAIL TEXT,
+            SALARY INTEGER
+            )''')
+        self.conn.commit()
+    
+    def run(self):
+        command_option = """
+1) Add a new Employee
+2) Edit an existing employee record
+3) search for an employee
+4) Quit
+>>> """
+        option = 0
+
+        while option != "4":
+            option = input(command_option)
+            if option == "1":
+                self.add_employee()
+            if option == "2":
+                self.edit_employee()
+            if option == "3":
+                self.search_employee()
+    
+    def add_employee(self):
+        First_Name = input('Enter Employee First Name: ')
+        Last_Name = input('Enter Employee Last Name: ')
+        EMAIL = input('Enter an Email: ')
+        SALARY = input('Enter Employee Salary: ')
+
+        query=('''
+                INSERT
+                INTO
+                Employees (First_Name, Last_Name, EMAIL , SALARY)
+                VALUES
+                (?, ?, ?, ?)''')
+            
+        self.curr.execute(query, (First_Name, Last_Name, EMAIL, SALARY))
+        self.conn.commit()
+
+    def edit_employee(self):
+        employees = self.select_all()
+        count = 1
+        if not employees:
+            print("No employee available to edit")
+            return
+
+        print("List of employees")
+        for employee in employees:
+            Id, First_Name, Last_Name, EMAIL,SALARY = employee
+            print("{}) First Name: {}, Last Name: {}, Email: {},Salary: {}".format(Id, First_Name, Last_Name, EMAIL,SALARY))
+        employeeId = input(">>> ")
+
+        First_Name = input('Enter a new first name (old: {} ): '.format(First_Name))
+        Last_Name = input('Enter a new last name: (old: {} ): '.format(Last_Name))
+        EMAIL = input('Enter a new email: (old: {} ): '.format(EMAIL))
+        SALARY = input('Enter a new salary: (old: {} ): '.format(SALARY))
+
+        query=('''
+                UPDATE Employees
+                SET First_Name=?, Last_Name=?, EMAIL=?,SALARY=? WHERE ID=?''')
+            
+        self.curr.execute(query, (First_Name, Last_Name, EMAIL,SALARY, employeeId))
+        self.conn.commit()
+
+
+    def search_employee(self):
+        First_Name = input("Search employee by first name: ")
+        employees = self.search_employee_db(First_Name)
+
+        if not employees:
+            print("No employee found")
+            input("Press any key to go back.")
+            return
+
+        print("List of matched employees")
+        for employee in employees:
+            Id, First_Name, Last_Name, EMAIL,SALARY = employee
+            print("{}) First Name: {}, Last Name: {}, Email: {},Salary: {}".format(Id, First_Name, Last_Name, EMAIL,SALARY))
+        input("Press any key to go back.")
+    
+    def select_all(self):
+        """
+        Returns the Full Database
+        """
+        return list(self.curr.execute('SELECT * FROM Employees'))
+
+    def search_employee_db(self, First_Name):
+        """
+        Returns the Full Database
+        """
+        return list(self.curr.execute("SELECT * FROM Employees WHERE First_Name LIKE '%{}%'".format(First_Name)))
+
+    def close(self):
+        self.conn.close()
+    def connect(self, dbname):
+        """
+        Connect to database
+        returns cursor
+        """
+        conn = sqlite3.connect(dbname)
+        return conn, conn.cursor()
+
+if __name__ == '__main__':
+    inventory = Inventory()
+    inventory.run()
+    inventory.close()
